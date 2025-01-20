@@ -1,4 +1,4 @@
-#Chat Server IO
+# Chat Server IO
 
 Chat server implementation using SocketServer.IO in Java code for server-side and simple index.html for client-side. Added implementation improvement such as
 - Broadcast a message to connected users when someone connects or disconnects.
