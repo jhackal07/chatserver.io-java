@@ -399,6 +399,13 @@
                   oldNickname: nickname,
                 });
                 nickname = words[1];
+              } else if (message.startsWith("/private")) {
+                console.log("Private message");
+                const words = message.split(" ");
+                socket.emit("private message", {
+                  to: words[1],
+                  message: words[2],
+                });
               } else {
                 // Send public message
                 addChatMessage(nickname, message, true);
