@@ -1,4 +1,4 @@
-package com.chat.server.impl;
+package com.chat.server.impl.vo;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

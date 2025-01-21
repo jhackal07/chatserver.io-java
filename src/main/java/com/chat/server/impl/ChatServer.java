@@ -1,5 +1,6 @@
-package com.chat.server.impl.vo;
-import com.chat.server.impl.ChatMessage;
+package com.chat.server.impl;
+import com.chat.server.impl.vo.ChatMessage;
+import com.chat.server.impl.vo.PrivateMessage;
 import com.corundumstudio.socketio.Configuration;
 import com.corundumstudio.socketio.SocketIOServer;
 import io.netty.bootstrap.ServerBootstrap;
