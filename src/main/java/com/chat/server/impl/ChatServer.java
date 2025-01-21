@@ -82,7 +82,7 @@ public class ChatServer {
             handlePrivateMessage(client, privateMessage);
         });
 
-        socketServer.addEventListener("nickname", Nickname.class, (client, nickname, ackRequest) -> {
+        socketServer.addEventListener("nick", Nickname.class, (client, nickname, ackRequest) -> {
             handleChangeNickname(client, nickname);
         });
     }

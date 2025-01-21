@@ -391,10 +391,10 @@
                 message: message,
               });
             } else {
-              if (message.startsWith("/nickname")) {
+              if (message.startsWith("/nick")) {
                 console.log("Changing nickname");
                 const words = message.split(" ");
-                socket.emit("nickname", {
+                socket.emit("nick", {
                   nickname: words[1],
                   oldNickname: nickname,
                 });
