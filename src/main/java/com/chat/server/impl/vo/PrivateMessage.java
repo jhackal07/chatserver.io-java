@@ -1,4 +1,5 @@
 package com.chat.server.impl.vo;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,4 +13,4 @@ public class PrivateMessage {
     private String from;
     private String to;
     private String message;
-} 
+}

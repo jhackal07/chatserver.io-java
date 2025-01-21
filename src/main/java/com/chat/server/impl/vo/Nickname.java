@@ -9,7 +9,8 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class ChatMessage {
+public class Nickname {
     private String nickname;
-    private String message;
+    private String sessionId;
+    private String oldNickname;
 }

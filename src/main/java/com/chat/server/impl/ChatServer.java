@@ -1,7 +1,10 @@
 package com.chat.server.impl;
+
 import com.chat.server.impl.vo.ChatMessage;
+import com.chat.server.impl.vo.Nickname;
 import com.chat.server.impl.vo.PrivateMessage;
 import com.corundumstudio.socketio.Configuration;
+import com.corundumstudio.socketio.SocketIOClient;
 import com.corundumstudio.socketio.SocketIOServer;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -21,7 +24,8 @@ import static com.chat.server.util.Constants.*;
 
 public class ChatServer {
     private final ConcurrentMap<String, String> onlineUsers = new ConcurrentHashMap<>(); // sessionId -> nickname
-    private final ConcurrentMap<String, String> nicknameToSessionId = new ConcurrentHashMap<>(); // nickname -> sessionId
+    private final ConcurrentMap<String, String> nicknameToSessionId = new ConcurrentHashMap<>(); // nickname ->
+                                                                                                 // sessionId
     private final SocketIOServer socketServer;
     private final EventLoopGroup bossGroup;
     private final EventLoopGroup workerGroup;
@@ -36,7 +40,7 @@ public class ChatServer {
         this.socketServer = new SocketIOServer(config);
         this.bossGroup = new NioEventLoopGroup(1);
         this.workerGroup = new NioEventLoopGroup();
-        
+
         configureSocketEvents();
     }
 
@@ -55,7 +59,7 @@ public class ChatServer {
         });
 
         // Handle nickname setting
-        socketServer.addEventListener("add user", String.class, (client, nickname, ackRequest) -> {
+        socketServer.addEventListener("add user", Nickname.class, (client, nickname, ackRequest) -> {
             handleNewUser(client, nickname);
         });
 
@@ -77,30 +81,46 @@ public class ChatServer {
         socketServer.addEventListener("private message", PrivateMessage.class, (client, privateMessage, ackRequest) -> {
             handlePrivateMessage(client, privateMessage);
         });
+
+        socketServer.addEventListener("nickname", Nickname.class, (client, nickname, ackRequest) -> {
+            handleChangeNickname(client, nickname);
+        });
+    }
+
+    private void handleChangeNickname(SocketIOClient client, Nickname nickname) {
+        client.set("nickname", nickname.getNickname());
+        System.out.println(
+                String.format("Nickname change from %s to %s", nickname.getOldNickname(), nickname.getNickname()));
+        onlineUsers.put(client.getSessionId().toString(), nickname.getNickname());
+        nicknameToSessionId.remove(nickname.getOldNickname());
+        nicknameToSessionId.put(nickname.getNickname(), client.getSessionId().toString());
+        nickname.setSessionId(client.getSessionId().toString());
+        broadcastToOthers(client, "user changed nickname", nickname);
+        broadcastOnlineUsers(client);
     }
 
     private void handleDisconnect(com.corundumstudio.socketio.SocketIOClient client, String nickname) {
         System.out.println(String.format(CLIENT_DISCONNECTED, nickname));
         onlineUsers.remove(client.getSessionId().toString());
         nicknameToSessionId.remove(nickname);
-        
+
         broadcastToOthers(client, "user disconnected", String.format(USER_LEFT, nickname));
         broadcastOnlineUsers(client);
     }
 
-    private void handleNewUser(com.corundumstudio.socketio.SocketIOClient client, String nickname) {
-        client.set("nickname", nickname);
-        onlineUsers.put(client.getSessionId().toString(), nickname);
-        nicknameToSessionId.put(nickname, client.getSessionId().toString());
-        
-        client.sendEvent("login", String.format(USER_JOINED, nickname));
+    private void handleNewUser(SocketIOClient client, Nickname nickname) {
+        client.set("nickname", nickname.getNickname());
+        onlineUsers.put(client.getSessionId().toString(), nickname.getNickname());
+        nicknameToSessionId.put(nickname.getNickname(), client.getSessionId().toString());
+
+        client.sendEvent("login", String.format(USER_JOINED, nickname.getNickname()));
         client.sendEvent("online users", new HashSet<>(onlineUsers.values()));
-        
-        broadcastToOthers(client, "user connected", String.format(USER_JOINED_BROADCAST, nickname));
+
+        broadcastToOthers(client, "user connected", String.format(USER_JOINED_BROADCAST, nickname.getNickname()));
         broadcastOnlineUsers(client);
     }
 
-    private void handleChatMessage(com.corundumstudio.socketio.SocketIOClient client, String message) {
+    private void handleChatMessage(SocketIOClient client, String message) {
         String nickname = client.get("nickname");
         if (nickname != null) {
             System.out.println(String.format(USER_MESSAGE, nickname, message));
@@ -108,7 +128,7 @@ public class ChatServer {
         }
     }
 
-    private void handleTyping(com.corundumstudio.socketio.SocketIOClient client) {
+    private void handleTyping(SocketIOClient client) {
         String nickname = client.get("nickname");
         if (nickname != null) {
             // Broadcast to everyone EXCEPT the sender
@@ -116,7 +136,7 @@ public class ChatServer {
         }
     }
 
-    private void handleStopTyping(com.corundumstudio.socketio.SocketIOClient client) {
+    private void handleStopTyping(SocketIOClient client) {
         String nickname = client.get("nickname");
         if (nickname != null) {
             // Broadcast to everyone EXCEPT the sender
@@ -124,7 +144,7 @@ public class ChatServer {
         }
     }
 
-    private void handlePrivateMessage(com.corundumstudio.socketio.SocketIOClient client, PrivateMessage privateMessage) {
+    private void handlePrivateMessage(SocketIOClient client, PrivateMessage privateMessage) {
         String senderNickname = client.get("nickname");
         if (senderNickname != null) {
             String targetSessionId = nicknameToSessionId.get(privateMessage.getTo());
@@ -136,14 +156,14 @@ public class ChatServer {
         }
     }
 
-    private void sendPrivateMessage(com.corundumstudio.socketio.SocketIOClient sender, String senderNickname, 
-                                  PrivateMessage privateMessage, String targetSessionId) {
+    private void sendPrivateMessage(SocketIOClient sender, String senderNickname,
+            PrivateMessage privateMessage, String targetSessionId) {
         for (var targetClient : sender.getNamespace().getAllClients()) {
             if (targetClient.getSessionId().toString().equals(targetSessionId)) {
-                targetClient.sendEvent("private message", 
-                    new PrivateMessage(senderNickname, privateMessage.getTo(), privateMessage.getMessage()));
-                sender.sendEvent("private message sent", 
-                    new PrivateMessage(senderNickname, privateMessage.getTo(), privateMessage.getMessage()));
+                targetClient.sendEvent("private message",
+                        new PrivateMessage(senderNickname, privateMessage.getTo(), privateMessage.getMessage()));
+                sender.sendEvent("private message sent",
+                        new PrivateMessage(senderNickname, privateMessage.getTo(), privateMessage.getMessage()));
                 return;
             }
         }
@@ -172,18 +192,18 @@ public class ChatServer {
         try {
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup)
-                .channel(NioServerSocketChannel.class)
-                .childHandler(new ChannelInitializer<SocketChannel>() {
-                    @Override
-                    protected void initChannel(SocketChannel ch) {
-                        configureHttpPipeline(ch.pipeline());
-                    }
-                });
+                    .channel(NioServerSocketChannel.class)
+                    .childHandler(new ChannelInitializer<SocketChannel>() {
+                        @Override
+                        protected void initChannel(SocketChannel ch) {
+                            configureHttpPipeline(ch.pipeline());
+                        }
+                    });
 
             Channel ch = b.bind(3000).sync().channel();
             System.out.println(SERVER_HTTP_STARTED);
             System.out.println(SERVER_SOCKET_STARTED);
-            
+
             ch.closeFuture().sync();
         } finally {
             shutdown();
@@ -213,24 +233,22 @@ public class ChatServer {
     private void serveIndexHtml(ChannelHandlerContext ctx) throws IOException {
         File file = new File("index.html");
         byte[] content = Files.readAllBytes(file.toPath());
-        
+
         FullHttpResponse response = new DefaultFullHttpResponse(
-            HttpVersion.HTTP_1_1, 
-            HttpResponseStatus.OK
-        );
-        
+                HttpVersion.HTTP_1_1,
+                HttpResponseStatus.OK);
+
         response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/html");
         response.headers().set(HttpHeaderNames.CONTENT_LENGTH, content.length);
         response.content().writeBytes(content);
-        
+
         ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
     }
 
     private void sendNotFound(ChannelHandlerContext ctx) {
         FullHttpResponse response = new DefaultFullHttpResponse(
-            HttpVersion.HTTP_1_1,
-            HttpResponseStatus.NOT_FOUND
-        );
+                HttpVersion.HTTP_1_1,
+                HttpResponseStatus.NOT_FOUND);
         ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
     }
 
@@ -239,4 +257,4 @@ public class ChatServer {
         workerGroup.shutdownGracefully();
         socketServer.stop();
     }
-} 
+}

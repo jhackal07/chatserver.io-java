@@ -1,41 +1,42 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
     <title>Socket.IO chat</title>
     <style>
-      body { 
-        margin: 0; 
-        padding-bottom: 3rem; 
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      body {
+        margin: 0;
+        padding-bottom: 3rem;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
         background-color: #1a1a1a;
         color: #e0e0e0;
       }
 
-      #form { 
-        background: rgba(255, 255, 255, 0.1); 
-        padding: 0.25rem; 
-        position: fixed; 
-        bottom: 0; 
-        left: 0; 
-        right: 200px; 
-        display: flex; 
-        height: 3rem; 
-        box-sizing: border-box; 
+      #form {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 0.25rem;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 200px;
+        display: flex;
+        height: 3rem;
+        box-sizing: border-box;
         backdrop-filter: blur(10px);
       }
 
-      #input { 
-        border: none; 
-        padding: 0 1rem; 
-        flex-grow: 1; 
-        border-radius: 2rem; 
+      #input {
+        border: none;
+        padding: 0 1rem;
+        flex-grow: 1;
+        border-radius: 2rem;
         margin: 0.25rem;
         background-color: #333;
         color: #fff;
         border: 1px solid #555;
       }
 
-      #input:focus { 
+      #input:focus {
         outline: none;
         background-color: #363636;
       }
@@ -44,25 +45,25 @@
         color: #aaa;
       }
 
-      #messages { 
-        list-style-type: none; 
-        margin: 0; 
-        padding: 0; 
-        margin-right: 200px; 
+      #messages {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+        margin-right: 200px;
         padding-bottom: 3.5rem;
       }
 
-      #messages > li { 
+      #messages > li {
         padding: 0.5rem 1rem;
       }
 
-      #messages > li:nth-child(odd) { 
+      #messages > li:nth-child(odd) {
         background: #2d2d2d;
       }
 
-      #typing { 
-        padding: 0.5rem 1rem; 
-        color: #808080; 
+      #typing {
+        padding: 0.5rem 1rem;
+        color: #808080;
         font-style: italic;
         position: fixed;
         bottom: 3rem;
@@ -185,7 +186,8 @@
         font-weight: normal;
       }
 
-      #send-button, #emoji-button {
+      #send-button,
+      #emoji-button {
         background: none; /* No background */
         border: none; /* No border */
         cursor: pointer;
@@ -227,17 +229,19 @@
       ::-webkit-scrollbar-thumb:hover {
         background: #4a4a4a;
       }
-
     </style>
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1.18.4/index.js" type="module"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1.18.4/index.js"
+      type="module"
+    ></script>
   </head>
   <body>
     <div id="nickname-form">
       <div class="container">
         <h3>What's your nickname?</h3>
         <form id="start-form">
-          <input id="nickname-input" autocomplete="off" /><br>
+          <input id="nickname-input" autocomplete="off" /><br />
           <button>Start Chatting</button>
         </form>
       </div>
@@ -256,46 +260,46 @@
     <emoji-picker id="emoji-picker"></emoji-picker>
 
     <script>
-      const socket = io('http://localhost:3001', {
-        transports: ['websocket'],
-        upgrade: false
+      const socket = io("http://localhost:3001", {
+        transports: ["websocket"],
+        upgrade: false,
       });
 
-      const nicknameForm = document.getElementById('nickname-form');
-      const startForm = document.getElementById('start-form');
-      const nicknameInput = document.getElementById('nickname-input');
-      const form = document.getElementById('form');
-      const input = document.getElementById('input');
-      const messages = document.getElementById('messages');
-      const typingElement = document.getElementById('typing');
-      const usersList = document.getElementById('users-list');
-      const emojiButton = document.getElementById('emoji-button');
-      const emojiPicker = document.getElementById('emoji-picker');
-      
-      let nickname = '';
+      const nicknameForm = document.getElementById("nickname-form");
+      const startForm = document.getElementById("start-form");
+      const nicknameInput = document.getElementById("nickname-input");
+      const form = document.getElementById("form");
+      const input = document.getElementById("input");
+      const messages = document.getElementById("messages");
+      const typingElement = document.getElementById("typing");
+      const usersList = document.getElementById("users-list");
+      const emojiButton = document.getElementById("emoji-button");
+      const emojiPicker = document.getElementById("emoji-picker");
+
+      let nickname = "";
       let typingTimeout;
       const TYPING_TIMER_LENGTH = 400;
       let selectedUser = null;
 
       // Hide chat form until nickname is set
-      form.style.display = 'none';
-      
+      form.style.display = "none";
+
       function addChatMessage(nickname, message, isSelf = false) {
-        const item = document.createElement('li');
-        item.className = 'message';
-        
-        const nicknameSpan = document.createElement('span');
-        nicknameSpan.className = 'nickname';
-        nicknameSpan.textContent = nickname + ':';
-        
-        const messageSpan = document.createElement('span');
-        messageSpan.className = 'emoji';
+        const item = document.createElement("li");
+        item.className = "message";
+
+        const nicknameSpan = document.createElement("span");
+        nicknameSpan.className = "nickname";
+        nicknameSpan.textContent = nickname + ":";
+
+        const messageSpan = document.createElement("span");
+        messageSpan.className = "emoji";
         messageSpan.textContent = message;
-        
+
         if (isSelf) {
-          nicknameSpan.style.color = '#0066cc';
+          nicknameSpan.style.color = "#0066cc";
         }
-        
+
         item.appendChild(nicknameSpan);
         item.appendChild(messageSpan);
         messages.appendChild(item);
@@ -303,30 +307,30 @@
       }
 
       function addSystemMessage(msg) {
-        const item = document.createElement('li');
+        const item = document.createElement("li");
         item.textContent = msg;
-        item.style.fontStyle = 'italic';
-        item.style.color = '#d3d3d3';
+        item.style.fontStyle = "italic";
+        item.style.color = "#d3d3d3";
         messages.appendChild(item);
         window.scrollTo(0, document.body.scrollHeight);
       }
 
       function addPrivateMessage(nickname, message, isSelf = false) {
-        const item = document.createElement('li');
-        item.className = 'message private-message';
-        
-        const nicknameSpan = document.createElement('span');
-        nicknameSpan.className = 'nickname';
-        nicknameSpan.textContent = nickname + ':';
-        
-        const messageSpan = document.createElement('span');
-        messageSpan.className = 'emoji';
+        const item = document.createElement("li");
+        item.className = "message private-message";
+
+        const nicknameSpan = document.createElement("span");
+        nicknameSpan.className = "nickname";
+        nicknameSpan.textContent = nickname + ":";
+
+        const messageSpan = document.createElement("span");
+        messageSpan.className = "emoji";
         messageSpan.textContent = message;
-        
+
         if (isSelf) {
-          nicknameSpan.style.color = '#0066cc';
+          nicknameSpan.style.color = "#0066cc";
         }
-        
+
         item.appendChild(nicknameSpan);
         item.appendChild(messageSpan);
         messages.appendChild(item);
@@ -334,97 +338,117 @@
       }
 
       // Nickname form handling
-      startForm.addEventListener('submit', (e) => {
+      startForm.addEventListener("submit", (e) => {
         e.preventDefault();
         if (nicknameInput.value) {
           nickname = nicknameInput.value;
-          socket.emit('add user', nickname);
-          nicknameForm.style.display = 'none';
-          form.style.display = 'flex';
+          socket.emit("add user", {
+            nickname: nickname,
+          });
+          nicknameForm.style.display = "none";
+          form.style.display = "flex";
         }
       });
 
       // Typing event handlers
       function updateTyping() {
         if (!typingTimeout) {
-          socket.emit('typing');
+          socket.emit("typing");
         }
         clearTimeout(typingTimeout);
         typingTimeout = setTimeout(() => {
-          socket.emit('stop typing');
+          socket.emit("stop typing");
           typingTimeout = null;
         }, TYPING_TIMER_LENGTH);
       }
 
-      input.addEventListener('input', () => {
+      input.addEventListener("input", () => {
         updateTyping();
       });
 
       // Socket event handlers
-      socket.on('login', (msg) => {
+      socket.on("login", (msg) => {
         addSystemMessage(msg);
       });
 
-      socket.on('typing', (nickname) => {
+      socket.on("typing", (nickname) => {
         typingElement.textContent = `${nickname} is typing...`;
       });
 
-      socket.on('stop typing', (nickname) => {
-        typingElement.textContent = '';
+      socket.on("stop typing", (nickname) => {
+        typingElement.textContent = "";
       });
 
-      form.addEventListener('submit', (e) => {
+      form.addEventListener("submit", (e) => {
         e.preventDefault();
         if (input.value) {
           const message = input.value.trim();
           if (message) {
             if (selectedUser) {
               // Send private message
-              socket.emit('private message', {
+              socket.emit("private message", {
                 to: selectedUser,
-                message: message
+                message: message,
               });
             } else {
-              // Send public message
-              addChatMessage(nickname, message, true);
-              socket.emit('chat message', message);
+              if (message.startsWith("/nickname")) {
+                console.log("Changing nickname");
+                const words = message.split(" ");
+                socket.emit("nickname", {
+                  nickname: words[1],
+                  oldNickname: nickname,
+                });
+                nickname = words[1];
+              } else {
+                // Send public message
+                addChatMessage(nickname, message, true);
+                socket.emit("chat message", message);
+              }
             }
-            input.value = '';
-            socket.emit('stop typing');
+            input.value = "";
+            socket.emit("stop typing");
             typingTimeout = null;
           }
         }
       });
 
       // Only receive messages from others
-      socket.on('chat message', (data) => {
-        if (data.nickname !== nickname) {  // Only add if message is from someone else
+      socket.on("chat message", (data) => {
+        if (data.nickname !== nickname) {
+          // Only add if message is from someone else
           addChatMessage(data.nickname, data.message);
         }
       });
 
-      socket.on('user connected', (msg) => {
+      socket.on("user connected", (msg) => {
         addSystemMessage(msg);
       });
 
-      socket.on('user disconnected', (msg) => {
+      socket.on("user disconnected", (msg) => {
         addSystemMessage(msg);
       });
 
-      socket.on('connect', () => {
-        console.log('Connected to server');
+      socket.on("connect", () => {
+        console.log("Connected to server");
       });
 
-      socket.on('disconnect', () => {
-        console.log('Disconnected from server');
-        typingElement.textContent = '';
+      socket.on("disconnect", () => {
+        console.log("Disconnected from server");
+        typingElement.textContent = "";
+      });
+
+      socket.on("user changed nickname", (data) => {
+        addSystemMessage(
+          `${data.oldNickname} changed nickname to ${data.nickname}`,
+        );
       });
 
       function updateOnlineUsers(users) {
-        usersList.innerHTML = '';
-        users.forEach(user => {
-          if (user !== nickname) { // Don't show current user in the list
-            const li = document.createElement('li');
+        usersList.innerHTML = "";
+        users.forEach((user) => {
+          if (user !== nickname) {
+            // Don't show current user in the list
+            const li = document.createElement("li");
             li.textContent = user;
             li.onclick = () => selectUser(user);
             usersList.appendChild(li);
@@ -433,47 +457,54 @@
       }
 
       // Add handler for online users updates
-      socket.on('online users', (users) => {
+      socket.on("online users", (users) => {
         updateOnlineUsers(users);
       });
 
       function selectUser(user) {
         selectedUser = selectedUser === user ? null : user;
         // Update UI to show selected user
-        document.querySelectorAll('#users-list li').forEach(li => {
-          li.style.backgroundColor = li.textContent === selectedUser ? '#e3f2fd' : '';
+        document.querySelectorAll("#users-list li").forEach((li) => {
+          li.style.backgroundColor =
+            li.textContent === selectedUser ? "#e3f2fd" : "";
         });
-        input.placeholder = selectedUser ? `Message ${selectedUser}` : 'Message everyone';
+        input.placeholder = selectedUser
+          ? `Message ${selectedUser}`
+          : "Message everyone";
       }
 
       // Handle private messages
-      socket.on('private message', (data) => {
+      socket.on("private message", (data) => {
         addPrivateMessage(data.from, data.message);
       });
 
-      socket.on('private message sent', (data) => {
+      socket.on("private message sent", (data) => {
         addPrivateMessage(nickname, data.message, true);
       });
 
-      socket.on('private message error', (error) => {
+      socket.on("private message error", (error) => {
         addSystemMessage(error);
       });
 
       // Toggle emoji picker
-      emojiButton.addEventListener('click', () => {
-        emojiPicker.style.display = emojiPicker.style.display === 'none' ? 'block' : 'none';
+      emojiButton.addEventListener("click", () => {
+        emojiPicker.style.display =
+          emojiPicker.style.display === "none" ? "block" : "none";
       });
 
       // Handle emoji selection
-      emojiPicker.addEventListener('emoji-click', event => {
+      emojiPicker.addEventListener("emoji-click", (event) => {
         input.value += event.detail.unicode;
         input.focus();
       });
 
       // Hide emoji picker when clicking outside
-      document.addEventListener('click', (e) => {
-        if (!emojiButton.contains(e.target) && !emojiPicker.contains(e.target)) {
-          emojiPicker.style.display = 'none';
+      document.addEventListener("click", (e) => {
+        if (
+          !emojiButton.contains(e.target) &&
+          !emojiPicker.contains(e.target)
+        ) {
+          emojiPicker.style.display = "none";
         }
       });
     </script>
