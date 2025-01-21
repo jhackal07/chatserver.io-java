@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentMap;
 import static com.chat.server.util.Constants.*;
 
 public class ChatServer {
+
     private final ConcurrentMap<String, String> onlineUsers = new ConcurrentHashMap<>(); // sessionId -> nickname
     private final ConcurrentMap<String, String> nicknameToSessionId = new ConcurrentHashMap<>(); // nickname ->
                                                                                                  // sessionId
@@ -52,50 +53,50 @@ public class ChatServer {
 
         // Handle socket disconnection
         socketServer.addDisconnectListener(client -> {
-            String nickname = client.get("nickname");
+            String nickname = client.get(NICKNAME);
             if (nickname != null) {
                 handleDisconnect(client, nickname);
             }
         });
 
         // Handle nickname setting
-        socketServer.addEventListener("add user", Nickname.class, (client, nickname, ackRequest) -> {
+        socketServer.addEventListener(ADD_USER, Nickname.class, (client, nickname, ackRequest) -> {
             handleNewUser(client, nickname);
         });
 
         // Handle chat messages
-        socketServer.addEventListener("chat message", String.class, (client, message, ackRequest) -> {
+        socketServer.addEventListener(CHAT_MSG, String.class, (client, message, ackRequest) -> {
             handleChatMessage(client, message);
         });
 
         // Handle typing events
-        socketServer.addEventListener("typing", Object.class, (client, data, ackRequest) -> {
+        socketServer.addEventListener(TYPING, Object.class, (client, data, ackRequest) -> {
             handleTyping(client);
         });
 
-        socketServer.addEventListener("stop typing", Object.class, (client, data, ackRequest) -> {
+        socketServer.addEventListener(STOP_TYPING, Object.class, (client, data, ackRequest) -> {
             handleStopTyping(client);
         });
 
         // Handle private messages
-        socketServer.addEventListener("private message", PrivateMessage.class, (client, privateMessage, ackRequest) -> {
+        socketServer.addEventListener(PRIV_MSG, PrivateMessage.class, (client, privateMessage, ackRequest) -> {
             handlePrivateMessage(client, privateMessage);
         });
 
-        socketServer.addEventListener("nick", Nickname.class, (client, nickname, ackRequest) -> {
+        socketServer.addEventListener(NICK, Nickname.class, (client, nickname, ackRequest) -> {
             handleChangeNickname(client, nickname);
         });
     }
 
     private void handleChangeNickname(SocketIOClient client, Nickname nickname) {
-        client.set("nickname", nickname.getNickname());
+        client.set(NICKNAME, nickname.getNickname());
         System.out.println(
-                String.format("Nickname change from %s to %s", nickname.getOldNickname(), nickname.getNickname()));
+                String.format(NICKNAME_CHANGE, nickname.getOldNickname(), nickname.getNickname()));
         onlineUsers.put(client.getSessionId().toString(), nickname.getNickname());
         nicknameToSessionId.remove(nickname.getOldNickname());
         nicknameToSessionId.put(nickname.getNickname(), client.getSessionId().toString());
         nickname.setSessionId(client.getSessionId().toString());
-        broadcastToOthers(client, "user changed nickname", nickname);
+        broadcastToOthers(client, USR_CH_NICK, nickname);
         broadcastOnlineUsers(client);
     }
 
@@ -104,54 +105,54 @@ public class ChatServer {
         onlineUsers.remove(client.getSessionId().toString());
         nicknameToSessionId.remove(nickname);
 
-        broadcastToOthers(client, "user disconnected", String.format(USER_LEFT, nickname));
+        broadcastToOthers(client, USR_DCONN, String.format(USER_LEFT, nickname));
         broadcastOnlineUsers(client);
     }
 
     private void handleNewUser(SocketIOClient client, Nickname nickname) {
-        client.set("nickname", nickname.getNickname());
+        client.set(NICKNAME, nickname.getNickname());
         onlineUsers.put(client.getSessionId().toString(), nickname.getNickname());
         nicknameToSessionId.put(nickname.getNickname(), client.getSessionId().toString());
 
-        client.sendEvent("login", String.format(USER_JOINED, nickname.getNickname()));
-        client.sendEvent("online users", new HashSet<>(onlineUsers.values()));
+        client.sendEvent(LOGIN, String.format(USER_JOINED, nickname.getNickname()));
+        client.sendEvent(OL_USERS, new HashSet<>(onlineUsers.values()));
 
-        broadcastToOthers(client, "user connected", String.format(USER_JOINED_BROADCAST, nickname.getNickname()));
+        broadcastToOthers(client, USR_CONN, String.format(USER_JOINED_BROADCAST, nickname.getNickname()));
         broadcastOnlineUsers(client);
     }
 
     private void handleChatMessage(SocketIOClient client, String message) {
-        String nickname = client.get("nickname");
+        String nickname = client.get(NICKNAME);
         if (nickname != null) {
             System.out.println(String.format(USER_MESSAGE, nickname, message));
-            broadcastToOthers(client, "chat message", new ChatMessage(nickname, message));
+            broadcastToOthers(client, CHAT_MSG, new ChatMessage(nickname, message));
         }
     }
 
     private void handleTyping(SocketIOClient client) {
-        String nickname = client.get("nickname");
+        String nickname = client.get(NICKNAME);
         if (nickname != null) {
             // Broadcast to everyone EXCEPT the sender
-            broadcastToOthers(client, "typing", nickname);
+            broadcastToOthers(client, TYPING, nickname);
         }
     }
 
     private void handleStopTyping(SocketIOClient client) {
-        String nickname = client.get("nickname");
+        String nickname = client.get(NICKNAME);
         if (nickname != null) {
             // Broadcast to everyone EXCEPT the sender
-            broadcastToOthers(client, "stop typing", nickname);
+            broadcastToOthers(client, STOP_TYPING, nickname);
         }
     }
 
     private void handlePrivateMessage(SocketIOClient client, PrivateMessage privateMessage) {
-        String senderNickname = client.get("nickname");
+        String senderNickname = client.get(NICKNAME);
         if (senderNickname != null) {
             String targetSessionId = nicknameToSessionId.get(privateMessage.getTo());
             if (targetSessionId != null) {
                 sendPrivateMessage(client, senderNickname, privateMessage, targetSessionId);
             } else {
-                client.sendEvent("private message error", String.format(USER_NOT_FOUND, privateMessage.getTo()));
+                client.sendEvent(PRIV_MSG_ERR, String.format(USER_NOT_FOUND, privateMessage.getTo()));
             }
         }
     }
@@ -160,9 +161,9 @@ public class ChatServer {
             PrivateMessage privateMessage, String targetSessionId) {
         for (var targetClient : sender.getNamespace().getAllClients()) {
             if (targetClient.getSessionId().toString().equals(targetSessionId)) {
-                targetClient.sendEvent("private message",
+                targetClient.sendEvent(PRIV_MSG,
                         new PrivateMessage(senderNickname, privateMessage.getTo(), privateMessage.getMessage()));
-                sender.sendEvent("private message sent",
+                sender.sendEvent(PRIV_MSG_SENT,
                         new PrivateMessage(senderNickname, privateMessage.getTo(), privateMessage.getMessage()));
                 return;
             }
@@ -180,7 +181,7 @@ public class ChatServer {
     private void broadcastOnlineUsers(com.corundumstudio.socketio.SocketIOClient client) {
         for (var otherClient : client.getNamespace().getAllClients()) {
             if (!otherClient.getSessionId().equals(client.getSessionId())) {
-                otherClient.sendEvent("online users", new HashSet<>(onlineUsers.values()));
+                otherClient.sendEvent(OL_USERS, new HashSet<>(onlineUsers.values()));
             }
         }
     }
